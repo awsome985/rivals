@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIVAL ARENA - 3D Gun Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ===== LOBBY UI ===== */
+        #lobby {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        #lobby.hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .lobby-content {
+            text-align: center;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .logo {
+            font-size: 4.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            text-shadow: 0 0 40px rgba(0, 242, 254, 0.3);
+            letter-spacing: 8px;
+        }
+
+        .tagline {
+            font-size: 1.3rem;
+            color: #ff007f;
+            margin-bottom: 40px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 20px 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00f2fe;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+
+        .credits-display {
+            font-size: 2rem;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .lobby-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .panel h2 {
+            font-size: 1.8rem;
+            color: #00f2fe;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid rgba(0,242,254,0.3);
+            padding-bottom: 15px;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            padding: 15px 20px;
+            background: rgba(79, 172, 254, 0.1);
+            border: 2px solid rgba(79, 172, 254, 0.3);
+            color: #4facfe;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .option-btn:hover {
+            background: rgba(79, 172, 254, 0.2);
+            border-color: rgba(79, 172, 254, 0.6);
+            transform: translateX(5px);
+        }
+
+        .option-btn.selected {
+            background: rgba(79, 172, 254, 0.4);
+            border-color: #4facfe;
+            color: #fff;
+        }
+
+        .weapon-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .weapon-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .weapon-item.selected {
+            background: rgba(0,242,254,0.2);
+            border-color: #00f2fe;
+        }
+
+        .weapon-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .weapon-name {
+            font-weight: bold;
+            text-align: left;
+            flex: 1;
+        }
+
+        .weapon-cost {
+            background: rgba(255,215,0,0.2);
+            padding: 4px 12px;
+            border-radius: 6px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .weapon-cost.unlocked {
+            background: rgba(34,197,94,0.3);
+            color: #22c55e;
+        }
+
+        .weapon-cost.locked-warn {
+            background: rgba(255,0,127,0.3);
+            color: #ff007f;
+        }
+
+        .start-btn {
+            padding: 18px 80px;
+            background: linear-gradient(135deg, #ff007f, #7928ca);
+            border: none;
+            color: #fff;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 30px rgba(255, 0, 127, 0.4);
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 50px rgba(255, 0, 127, 0.7);
+        }
+
+        .start-btn:active {
+            transform: scale(0.95);
+        }
+
+        .start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ===== IN-GAME HUD ===== */
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .hud-element {
+            position: absolute;
+            color: #fff;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: rgba(10,10,18,0.6);
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #score-display {
+            top: 20px;
+            left: 20px;
+            font-size: 1.8rem;
+            color: #00f2fe;
+        }
+
+        #ammo-display {
+            bottom: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+            color: #ff007f;
+        }
+
+        #weapon-display {
+            bottom: 20px;
+            right: 20px;
+            font-size: 1.3rem;
+            color: #ffaa00;
+            text-align: right;
+        }
+
+        #health-display {
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #ff4444;
+        }
+
+        #wave-display {
+            top: 120px;
+            left: 20px;
+            font-size: 1.3rem;
+            color: #ffaa00;
+        }
+
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .crosshair-dot {
+            position: absolute;
+            background: #00f2fe;
+            top: 50%;
+            left: 50%;
+        }
+
+        .crosshair-dot.center {
+            width: 4px;
+            height: 4px;
+            transform: translate(-50%, -50%);
+        }
+
+        .crosshair-line {
+            position: absolute;
+            background: #00f2fe;
+        }
+
+        .crosshair-line.h {
+            width: 20px;
+            height: 1px;
+            top: 50%;
+            left: 50%;
+            transform: translateY(-50%);
+        }
+
+        .crosshair-line.v {
+            width: 1px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* ===== DEATH SCREEN ===== */
+        #death-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            z-index: 200;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #death-screen.show {
+            display: flex;
+        }
+
+        .death-content {
+            text-align: center;
+        }
+
+        .death-text {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #ff4444;
+            margin-bottom: 30px;
+            text-shadow: 0 0 30px rgba(255, 68, 68, 0.5);
+        }
+
+        .death-stats {
+            font-size: 1.8rem;
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+
+        .coins-earned {
+            font-size: 2.5rem;
+            color: #ffd700;
+            margin-bottom: 40px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .respawn-btn {
+            padding: 15px 50px;
+            background: #ff007f;
+            border: none;
+            color: #fff;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .respawn-btn:hover {
+            transform: scale(1.1);
+            background: #ff4499;
+        }
+
+        /* ===== LOADING SCREEN ===== */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+        }
+
+        #loading-screen.hidden {
+            display: none;
+        }
+
+        .loading-bar {
+            width: 300px;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 30px;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00f2fe, #4facfe);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading-text {
+            font-size: 1.3rem;
+            color: #00f2fe;
+            margin-bottom: 20px;
+        }
+
+        /* ===== DAMAGE INDICATOR ===== */
+        #damage-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        .damage-flash {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0);
+            animation: damageFlash 0.3s ease-out;
+        }
+
+        @keyframes damageFlash {
+            0% { background: rgba(255, 0, 0, 0.3); }
+            100% { background: rgba(255, 0, 0, 0); }
+        }
+
+        /* ===== NOTIFICATIONS ===== */
+        #notifications {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 60;
+        }
+
+        .notification {
+            background: rgba(0, 242, 254, 0.1);
+            border: 1px solid rgba(0, 242, 254, 0.5);
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            color: #00f2fe;
+            font-weight: bold;
+            min-width: 200px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2.5rem;
+            }
+
+            .lobby-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-row {
+                gap: 20px;
+            }
+
+            .stat-card {
+                padding: 15px 30px;
+            }
+
+            .panel {
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Loading Screen -->
+        <div id="loading-screen">
+            <div class="loading-text">Loading RIVAL ARENA</div>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loading-progress"></div>
+            </div>
+        </div>
+
+        <!-- Lobby UI -->
+        <div id="lobby">
+            <div class="lobby-content">
+                <div class="logo">RIVAL</div>
+                <div class="logo" style="color: #ff007f; margin: -20px 0 20px 0;">ARENA</div>
+                <div class="tagline">ULTIMATE 3D COMBAT EXPERIENCE</div>
+
+                <div class="credits-display">
+                    💰 CREDITS: <span id="credits-value">0</span>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <span class="stat-value" id="kills-stat">0</span>
+                        <div class="stat-label">Total Kills</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="matches-stat">0</span>
+                        <div class="stat-label">Matches Won</div>
+                    </div>
+                </div>
+
+                <div class="lobby-grid">
+                    <!-- Map Selection -->
+                    <div class="panel">
+                        <h2>Select Arena</h2>
+                        <div class="options">
+                            <button class="option-btn selected" data-map="neon">
+                                🌐 NEON GRID
+                            </button>
+                            <button class="option-btn" data-map="volcano">
+                                🌋 VOLCANO ARENA
+                            </button>
+                            <button class="option-btn" data-map="darkness">
+                                🌑 DARK THRONE
+                            </button>
+                            <button class="option-btn" data-map="sky">
+                                ☁️ SKY FORTRESS
+                            </button>
+                            <button class="option-btn" data-map="crystal">
+                                💎 CRYSTAL CAVE
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Weapon Selection -->
+                    <div class="panel">
+                        <h2>Select Weapon</h2>
+                        <div class="options" id="weapon-list"></div>
+                    </div>
+                </div>
+
+                <button class="start-btn" id="start-btn">START MATCH</button>
+            </div>
+        </div>
+
+        <!-- In-Game HUD -->
+        <div id="hud" style="display:none;">
+            <div id="score-display" class="hud-element">
+                KILLS: <span id="score-value">0</span>
+            </div>
+            <div id="wave-display" class="hud-element">
+                WAVE: <span id="wave-value">1</span>
+            </div>
+            <div id="health-display" class="hud-element">
+                HP: <span id="health-value">100</span>
+            </div>
+            <div id="ammo-display" class="hud-element">
+                AMMO: <span id="ammo-value">∞</span>
+            </div>
+            <div id="weapon-display" class="hud-element">
+                <div id="weapon-name">PISTOL</div>
+                <div style="font-size: 0.9rem; color: #aaa;" id="weapon-info"></div>
+            </div>
+
+            <div id="crosshair">
+                <div class="crosshair-dot center"></div>
+                <div class="crosshair-line h"></div>
+                <div class="crosshair-line v"></div>
+            </div>
+
+            <div id="notifications"></div>
+        </div>
+
+        <!-- Death Screen -->
+        <div id="death-screen">
+            <div class="death-content">
+                <div class="death-text">MISSION COMPLETE</div>
+                <div class="death-stats">
+                    Final Wave: <span id="final-wave">1</span>
+                </div>
+                <div class="death-stats">
+                    Enemies Defeated: <span id="final-kills">0</span>
+                </div>
+                <div class="coins-earned">
+                    💰 +<span id="coins-earned">0</span> CREDITS
+                </div>
+                <button class="respawn-btn" id="respawn-btn">PLAY AGAIN</button>
+                <button class="respawn-btn" id="lobby-btn">RETURN TO LOBBY</button>
+            </div>
+        </div>
+
+        <!-- Damage Indicator -->
+        <div id="damage-indicator"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon-es6/0.20.0/cannon-es6.js"></script>
+    <script>
+        // ===== PERSISTENT STORAGE =====
+        const STORAGE_KEY = 'rivalArenaGameState';
+
+        function saveGameState() {
+            const state = {
+                totalCredits: gameState.totalCredits,
+                totalKills: gameState.totalKills,
+                matchesWon: gameState.matchesWon,
+                unlockedWeapons: gameState.unlockedWeapons
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadGameState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const state = JSON.parse(saved);
+                gameState.totalCredits = state.totalCredits || 0;
+                gameState.totalKills = state.totalKills || 0;
+                gameState.matchesWon = state.matchesWon || 0;
+                gameState.unlockedWeapons = state.unlockedWeapons || [0];
+            }
+        }
+
+        // ===== GAME CONFIGURATION =====
+        const CONFIG = {
+            maps: {
+                neon: {
+                    name: 'NEON GRID',
+                    groundColor: 0x0a0a24,
+                    skyColor: 0x000814,
+                    enemyColor: 0xff3333,
+                    gridColor: 0x00f2fe,
+                    description: 'Cyan cyberpunk space'
+                },
+                volcano: {
+                    name: 'VOLCANO ARENA',
+                    groundColor: 0x1a0a00,
+                    skyColor: 0x3d0000,
+                    enemyColor: 0xffaa00,
+                    gridColor: 0xff6600,
+                    description: 'Molten volcanic landscape'
+                },
+                darkness: {
+                    name: 'DARK THRONE',
+                    groundColor: 0x000000,
+                    skyColor: 0x0a0a0f,
+                    enemyColor: 0xff00ff,
+                    gridColor: 0xff00ff,
+                    description: 'Pitch black void'
+                },
+                sky: {
+                    name: 'SKY FORTRESS',
+                    groundColor: 0x87ceeb,
+                    skyColor: 0x87ceeb,
+                    enemyColor: 0x0066ff,
+                    gridColor: 0x0099ff,
+                    description: 'Floating in clouds'
+                },
+                crystal: {
+                    name: 'CRYSTAL CAVE',
+                    groundColor: 0x1a1a3a,
+                    skyColor: 0x0f0f1f,
+                    enemyColor: 0x00ffff,
+                    gridColor: 0x00ffff,
+                    description: 'Luminescent crystal chamber'
+                }
+            },
+            weapons: [
+                { id: 'pistol', name: 'LASER PISTOL', damage: 1, fireRate: 100, projectileSpeed: 100, projectileSize: 0.15, color: 0x00f2fe, cost: 0, ammo: Infinity },
+                { id: 'rifle', name: 'PLASMA RIFLE', damage: 2, fireRate: 60, projectileSpeed: 120, projectileSize: 0.12, color: 0xff007f, cost: 500, ammo: Infinity },
+                { id: 'shotgun', name: 'SCATTER CANNON', damage: 5, fireRate: 400, projectileSpeed: 80, projectileSize: 0.25, color: 0xffaa00, cost: 1000, ammo: Infinity, pellets: 8 },
+                { id: 'cannon', name: 'HYPER CANNON', damage: 10, fireRate: 800, projectileSpeed: 60, projectileSize: 0.4, color: 0xff0000, cost: 2000, ammo: Infinity },
+                { id: 'beam', name: 'ENERGY BEAM', damage: 3, fireRate: 50, projectileSpeed: 150, projectileSize: 0.08, color: 0x00ff00, cost: 3000, ammo: Infinity },
+                { id: 'missile', name: 'HOMING MISSILE', damage: 8, fireRate: 500, projectileSpeed: 70, projectileSize: 0.3, color: 0xffff00, cost: 5000, ammo: Infinity, homing: true },
+                { id: 'arc', name: 'ARC THROWER', damage: 4, fireRate: 150, projectileSpeed: 90, projectileSize: 0.2, color: 0x0099ff, cost: 1500, ammo: Infinity },
+                { id: 'pulse', name: 'PULSE BLASTER', damage: 2, fireRate: 80, projectileSpeed: 110, projectileSize: 0.18, color: 0xff6600, cost: 800, ammo: Infinity },
+                { id: 'phase', name: 'PHASE DISRUPTOR', damage: 6, fireRate: 200, projectileSpeed: 100, projectileSize: 0.22, color: 0xff00ff, cost: 2500, ammo: Infinity },
+                { id: 'frost', name: 'FROST CANNON', damage: 3, fireRate: 120, projectileSpeed: 95, projectileSize: 0.19, color: 0x00ffff, cost: 1200, ammo: Infinity },
+                { id: 'inferno', name: 'INFERNO BLASTER', damage: 7, fireRate: 250, projectileSpeed: 105, projectileSize: 0.26, color: 0xff4444, cost: 3500, ammo: Infinity },
+                { id: 'nova', name: 'NOVA EXPLOSIVE', damage: 12, fireRate: 1200, projectileSpeed: 50, projectileSize: 0.35, color: 0xffff00, cost: 7000, ammo: Infinity, explosion: true }
+            ]
+        };
+
+        // ===== GAME STATE =====
+        const gameState = {
+            // Persistent
+            totalCredits: 0,
+            totalKills: 0,
+            matchesWon: 0,
+            unlockedWeapons: [0],
+
+            // Session
+            currentMap: 'neon',
+            currentWeapon: 0,
+            score: 0,
+            health: 100,
+            wave: 1,
+            gameRunning: false,
+            playerAlive: true
+        };
+
+        // ===== THREE.JS SETUP =====
+        let scene, camera, renderer, world;
+        let player, enemies = [], bullets = [];
+        let keys = {};
+        let pitch = 0, yaw = 0;
+        let lastShotTime = 0;
+        let waveStartTime = 0;
+        let matchStartTime = 0;
+
+        const canvas = document.getElementById('game-canvas');
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingProgress = document.getElementById('loading-progress');
+        const lobby = document.getElementById('lobby');
+        const hud = document.getElementById('hud');
+        const deathScreen = document.getElementById('death-screen');
+
+        // ===== UPDATE STATS DISPLAY =====
+        function updateLobbyDisplay() {
+            document.getElementById('credits-value').textContent = gameState.totalCredits;
+            document.getElementById('kills-stat').textContent = gameState.totalKills;
+            document.getElementById('matches-stat').textContent = gameState.matchesWon;
+        }
+
+        // ===== WEAPON LIST UI =====
+        function initWeaponUI() {
+            const weaponList = document.getElementById('weapon-list');
+            weaponList.innerHTML = '';
+
+            CONFIG.weapons.forEach((weapon, index) => {
+                const isUnlocked = gameState.unlockedWeapons.includes(index);
+                const div = document.createElement('div');
+                div.className = 'weapon-item';
+                if (!isUnlocked) div.classList.add('locked');
+                if (gameState.currentWeapon === index) div.classList.add('selected');
+                
+                const costDisplay = isUnlocked ? 'OWNED' : weapon.cost + ' ₹';
+                const costClass = isUnlocked ? 'unlocked' : 
+                                 gameState.totalCredits >= weapon.cost ? '' : 'locked-warn';
+
+                div.innerHTML = `
+                    <span class="weapon-name">${weapon.name}</span>
+                    <span class="weapon-cost ${costClass}">${costDisplay}</span>
+                `;
+
+                div.addEventListener('click', () => {
+                    if (isUnlocked) {
+                        gameState.currentWeapon = index;
+                        initWeaponUI();
+                    } else if (gameState.totalCredits >= weapon.cost) {
+                        gameState.totalCredits -= weapon.cost;
+                        gameState.unlockedWeapons.push(index);
+                        gameState.currentWeapon = index;
+                        saveGameState();
+                        updateLobbyDisplay();
+                        initWeaponUI();
+                        showNotification('WEAPON UNLOCKED!');
+                    } else {
+                        showNotification('INSUFFICIENT CREDITS');
+                    }
+                });
+
+                weaponList.appendChild(div);
+            });
+        }
+
+        // ===== NOTIFICATIONS =====
+        function showNotification(text) {
+            const notif = document.createElement('div');
+            notif.className = 'notification';
+            notif.textContent = text;
+            const container = document.getElementById('notifications');
+            if (container) {
+                container.appendChild(notif);
+                setTimeout(() => notif.remove(), 3000);
+            }
+        }
+
+        // ===== MAP SELECTION =====
+        document.querySelectorAll('[data-map]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-map]').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                gameState.currentMap = btn.dataset.map;
+            });
+        });
+
+        // ===== START GAME =====
+        document.getElementById('start-btn').addEventListener('click', startGame);
+
+        async function startGame() {
+            gameState.gameRunning = true;
+            gameState.playerAlive = true;
+            gameState.score = 0;
+            gameState.health = 100;
+            gameState.wave = 1;
+            matchStartTime = Date.now();
+            waveStartTime = Date.now();
+
+            lobby.classList.add('hidden');
+            hud.style.display = 'block';
+            deathScreen.classList.remove('show');
+
+            await initScene();
+            animate();
+        }
+
+        // ===== RESPAWN =====
+        document.getElementById('respawn-btn').addEventListener('click', () => {
+            gameState.health = 100;
+            gameState.score = 0;
+            gameState.wave = 1;
+            deathScreen.classList.remove('show');
+            hud.style.display = 'block';
+            
+            if (player && player.body) {
+                player.body.position.set(0, 5, 0);
+                player.body.velocity.set(0, 0, 0);
+            }
+            gameState.playerAlive = true;
+            gameState.gameRunning = true;
+            matchStartTime = Date.now();
+            waveStartTime = Date.now();
+            animate();
+        });
+
+        // ===== RETURN TO LOBBY =====
+        document.getElementById('lobby-btn').addEventListener('click', () => {
+            gameState.gameRunning = false;
+            if (scene) scene.clear();
+            if (renderer) renderer.dispose();
+            
+            deathScreen.classList.remove('show');
+            hud.style.display = 'none';
+            lobby.classList.remove('hidden');
+            updateLobbyDisplay();
+            initWeaponUI();
+        });
+
+        // ===== INIT SCENE =====
+        async function initScene() {
+            // Three.js Setup
+            scene = new THREE.Scene();
+            const mapConfig = CONFIG.maps[gameState.currentMap];
+            scene.background = new THREE.Color(mapConfig.skyColor);
+            scene.fog = new THREE.FogExp2(mapConfig.skyColor, 0.01);
+
+            camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 2, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+
+            // Lighting
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            // Ground
+            const groundGeo = new THREE.PlaneGeometry(200, 200);
+            const groundMat = new THREE.MeshStandardMaterial({ color: mapConfig.groundColor, metalness: 0.3, roughness: 0.7 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Grid
+            const grid = new THREE.GridHelper(200, 40, mapConfig.gridColor, mapConfig.gridColor + 0x111111);
+            grid.position.y = 0.01;
+            scene.add(grid);
+
+            // Physics World
+            world = new CANNON.World();
+            world.gravity.set(0, -20, 0);
+            world.defaultContactMaterial.friction = 0.4;
+
+            const groundBody = new CANNON.Body({ mass: 0 });
+            groundBody.addShape(new CANNON.Plane());
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            world.addBody(groundBody);
+
+            // Player
+            const playerShape = new CANNON.Sphere(0.8);
+            const playerBody = new CANNON.Body({ mass: 1, shape: playerShape, linearDamping: 0.3 });
+            playerBody.position.set(0, 5, 0);
+            world.addBody(playerBody);
+
+            const playerGeo = new THREE.SphereGeometry(0.8, 32, 32);
+            const playerMat = new THREE.MeshStandardMaterial({ color: 0x4facfe, metalness: 0.8, roughness: 0.2 });
+            const playerMesh = new THREE.Mesh(playerGeo, playerMat);
+            playerMesh.castShadow = true;
+            playerMesh.receiveShadow = true;
+            scene.add(playerMesh);
+
+            player = { body: playerBody, mesh: playerMesh, health: 100 };
+
+            // Spawn initial enemies
+            const enemyCount = 3 + (gameState.wave - 1) * 2;
+            for (let i = 0; i < Math.min(enemyCount, 15); i++) spawnEnemy(mapConfig);
+
+            // Input
+            window.addEventListener('keydown', (e) => keys[e.code] = true);
+            window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement === canvas) {
+                    yaw -= e.movementX * 0.003;
+                    pitch -= e.movementY * 0.003;
+                    pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+                }
+            });
+
+            canvas.addEventListener('click', () => canvas.requestPointerLock());
+
+            window.addEventListener('mousedown', () => {
+                if (document.pointerLockElement === canvas && gameState.playerAlive) {
+                    fireBullet();
+                }
+            });
+
+            // Wave system
+            setInterval(() => {
+                if (gameState.gameRunning && enemies.length === 0 && gameState.playerAlive) {
+                    // All enemies defeated - next wave
+                    gameState.wave++;
+                    document.getElementById('wave-value').textContent = gameState.wave;
+                    
+                    const newEnemyCount = 3 + (gameState.wave - 1) * 2;
+                    for (let i = 0; i < Math.min(newEnemyCount, 20); i++) {
+                        spawnEnemy(mapConfig);
+                    }
+                    
+                    showNotification('WAVE ' + gameState.wave + ' STARTED');
+                }
+            }, 1000);
+
+            updateLoadingProgress(100);
+            setTimeout(() => loadingScreen.classList.add('hidden'), 500);
+        }
+
+        // ===== SPAWN ENEMY =====
+        function spawnEnemy(mapConfig) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 30 + Math.random() * 50;
+            const x = Math.cos(angle) * distance;
+            const z = Math.sin(angle) * distance;
+
+            // Mesh
+            const enemyGeo = new THREE.BoxGeometry(1.5, 2.5, 1.5);
+            const enemyMat = new THREE.MeshStandardMaterial({ color: mapConfig.enemyColor, metalness: 0.9, roughness: 0.1 });
+            const enemyMesh = new THREE.Mesh(enemyGeo, enemyMat);
+            enemyMesh.castShadow = true;
+            enemyMesh.receiveShadow = true;
+            scene.add(enemyMesh);
+
+            // Physics
+            const enemyShape = new CANNON.Box(new CANNON.Vec3(0.75, 1.25, 0.75));
+            const enemyBody = new CANNON.Body({ mass: 10, shape: enemyShape, linearDamping: 0.5 });
+            enemyBody.position.set(x, 2, z);
+            world.addBody(enemyBody);
+
+            enemies.push({
+                mesh: enemyMesh,
+                body: enemyBody,
+                health: 1 + Math.floor(gameState.wave / 3),
+                shootTimer: 0,
+                shootInterval: 2000 + Math.random() * 2000
+            });
+        }
+
+        // ===== FIRE BULLET =====
+        function fireBullet() {
+            const now = Date.now();
+            const weapon = CONFIG.weapons[gameState.currentWeapon];
+
+            if (now - lastShotTime < weapon.fireRate) return;
+            lastShotTime = now;
+
+            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+
+            if (weapon.pellets) {
+                for (let i = 0; i < weapon.pellets; i++) {
+                    const spreadAngle = (Math.random() - 0.5) * 0.3;
+                    const spreadDir = direction.clone();
+                    spreadDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), spreadAngle);
+                    createBullet(spreadDir, weapon);
+                }
+            } else {
+                createBullet(direction, weapon);
+            }
+        }
+
+        function createBullet(direction, weapon) {
+            const bulletGeo = new THREE.SphereGeometry(weapon.projectileSize, 8, 8);
+            const bulletMat = new THREE.MeshBasicMaterial({ color: weapon.color });
+            const bulletMesh = new THREE.Mesh(bulletGeo, bulletMat);
+
+            const spawnPos = new THREE.Vector3().copy(player.body.position);
+            spawnPos.add(direction.clone().multiplyScalar(2));
+            bulletMesh.position.copy(spawnPos);
+            scene.add(bulletMesh);
+
+            const bulletShape = new CANNON.Sphere(weapon.projectileSize);
+            const bulletBody = new CANNON.Body({ mass: 0.1, shape: bulletShape });
+            bulletBody.position.copy(spawnPos);
+            bulletBody.velocity.set(
+                direction.x * weapon.projectileSpeed,
+                direction.y * weapon.projectileSpeed,
+                direction.z * weapon.projectileSpeed
+            );
+            world.addBody(bulletBody);
+
+            bullets.push({
+                mesh: bulletMesh,
+                body: bulletBody,
+                createdAt: Date.now(),
+                weapon: weapon,
+                direction: direction
+            });
+        }
+
+        // ===== UPDATE LOADING PROGRESS =====
+        function updateLoadingProgress(value) {
+            loadingProgress.style.width = value + '%';
+        }
+
+        // ===== ANIMATION LOOP =====
+        function animate() {
+            if (!gameState.gameRunning) return;
+            requestAnimationFrame(animate);
+
+            world.step(1 / 60);
+
+            // Player movement
+            const moveDir = new THREE.Vector3();
+            if (keys['KeyW']) moveDir.z -= 1;
+            if (keys['KeyS']) moveDir.z += 1;
+            if (keys['KeyA']) moveDir.x -= 1;
+            if (keys['KeyD']) moveDir.x += 1;
+            moveDir.normalize();
+
+            const camQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+            moveDir.applyQuaternion(camQuat);
+
+            player.body.velocity.x = moveDir.x * 25;
+            player.body.velocity.z = moveDir.z * 25;
+
+            // Camera
+            camera.position.copy(player.body.position);
+            camera.position.y += 0.6;
+            const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
+            const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+            camera.quaternion.copy(qY).multiply(qX);
+
+            // Update player mesh
+            player.mesh.position.copy(player.body.position);
+
+            // Update bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.mesh.position.copy(bullet.body.position);
+
+                // Check collisions with enemies
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const dist = bullet.body.position.distanceTo(enemy.body.position);
+
+                    if (dist < 3) {
+                        enemy.health -= bullet.weapon.damage;
+
+                        // Remove bullet
+                        scene.remove(bullet.mesh);
+                        world.removeBody(bullet.body);
+                        bullets.splice(i, 1);
+
+                        if (enemy.health <= 0) {
+                            // Kill enemy
+                            scene.remove(enemy.mesh);
+                            world.removeBody(enemy.body);
+                            enemies.splice(j, 1);
+
+                            gameState.score++;
+                            gameState.totalKills++;
+                            document.getElementById('score-value').textContent = gameState.score;
+
+                            createExplosion(enemy.body.position, bullet.weapon.color);
+                        }
+                        break;
+                    }
+                }
+
+                // Remove old bullets
+                if (Date.now() - bullet.createdAt > 5000) {
+                    scene.remove(bullet.mesh);
+                    world.removeBody(bullet.body);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Update enemies
+            enemies.forEach(enemy => {
+                enemy.mesh.position.copy(enemy.body.position);
+
+                const diff = new THREE.Vector3().copy(player.body.position).sub(enemy.body.position);
+                diff.y = 0;
+                const len = diff.length();
+
+                if (len > 1) {
+                    diff.normalize();
+                    enemy.body.velocity.x = diff.x * 15;
+                    enemy.body.velocity.z = diff.z * 15;
+                }
+
+                enemy.shootTimer += 16;
+                if (enemy.shootTimer > enemy.shootInterval) {
+                    enemy.shootTimer = 0;
+                    createEnemyBullet(enemy);
+                }
+
+                if (len < 2 && gameState.playerAlive) {
+                    gameState.health -= 0.1;
+                    document.getElementById('health-value').textContent = Math.ceil(gameState.health);
+
+                    if (gameState.health <= 0) {
+                        playerDeath();
+                    }
+
+                    const flash = document.createElement('div');
+                    flash.className = 'damage-flash';
+                    document.getElementById('damage-indicator').appendChild(flash);
+                    setTimeout(() => flash.remove(), 300);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // ===== CREATE EXPLOSION =====
+        function createExplosion(pos, color) {
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const elevation = Math.random() * Math.PI;
+                const speed = 20 + Math.random() * 30;
+
+                const dir = new THREE.Vector3(
+                    Math.sin(elevation) * Math.cos(angle),
+                    Math.cos(elevation),
+                    Math.sin(elevation) * Math.sin(angle)
+                );
+
+                const particleGeo = new THREE.SphereGeometry(0.2, 8, 8);
+                const particleMat = new THREE.MeshBasicMaterial({ color });
+                const particle = new THREE.Mesh(particleGeo, particleMat);
+                particle.position.copy(pos);
+                scene.add(particle);
+
+                let age = 0;
+                const lifetime = 1000;
+
+                const animateParticle = () => {
+                    age += 16;
+                    const progress = age / lifetime;
+                    particle.position.addScaledVector(dir, speed * 0.016);
+                    particle.position.y -= 10 * 0.016;
+                    particle.material.opacity = 1 - progress;
+
+                    if (age < lifetime) {
+                        setTimeout(animateParticle, 16);
+                    } else {
+                        scene.remove(particle);
+                    }
+                };
+
+                animateParticle();
+            }
+        }
+
+        // ===== ENEMY BULLET =====
+        function createEnemyBullet(enemy) {
+            const dir = new THREE.Vector3().copy(player.body.position).sub(enemy.body.position).normalize();
+
+            const bulletGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+            const bulletMesh = new THREE.Mesh(bulletGeo, bulletMat);
+            bulletMesh.position.copy(enemy.body.position);
+            scene.add(bulletMesh);
+
+            const bulletShape = new CANNON.Sphere(0.15);
+            const bulletBody = new CANNON.Body({ mass: 0.1, shape: bulletShape });
+            bulletBody.position.copy(enemy.body.position);
+            bulletBody.velocity.set(dir.x * 50, dir.y * 50, dir.z * 50);
+            world.addBody(bulletBody);
+
+            const enemyBullet = {
+                mesh: bulletMesh,
+                body: bulletBody,
+                createdAt: Date.now(),
+                isEnemyBullet: true
+            };
+
+            bullets.push(enemyBullet);
+
+            const checkCollision = () => {
+                if (!enemyBullet.mesh.parent) return;
+
+                const dist = bulletBody.position.distanceTo(player.body.position);
+                if (dist < 1.5) {
+                    gameState.health -= 5;
+                    document.getElementById('health-value').textContent = Math.ceil(gameState.health);
+
+                    scene.remove(bulletMesh);
+                    world.removeBody(bulletBody);
+
+                    const flash = document.createElement('div');
+                    flash.className = 'damage-flash';
+                    document.getElementById('damage-indicator').appendChild(flash);
+                    setTimeout(() => flash.remove(), 300);
+
+                    if (gameState.health <= 0) {
+                        playerDeath();
+                    }
+                }
+            };
+
+            const collisionInterval = setInterval(() => {
+                if (!enemyBullet.mesh.parent) {
+                    clearInterval(collisionInterval);
+                    return;
+                }
+                checkCollision();
+            }, 50);
+
+            setTimeout(() => {
+                if (enemyBullet.mesh.parent) {
+                    scene.remove(bulletMesh);
+                    world.removeBody(bulletBody);
+                }
+                clearInterval(collisionInterval);
+            }, 3000);
+        }
+
+        // ===== PLAYER DEATH =====
+        function playerDeath() {
+            gameState.playerAlive = false;
+            gameState.gameRunning = false;
+
+            // Calculate coins earned
+            const coinsEarned = gameState.score * 100 + (gameState.wave - 1) * 500;
+            gameState.totalCredits += coinsEarned;
+            gameState.matchesWon++;
+            
+            saveGameState();
+
+            document.getElementById('final-wave').textContent = gameState.wave;
+            document.getElementById('final-kills').textContent = gameState.score;
+            document.getElementById('coins-earned').textContent = coinsEarned;
+            
+            deathScreen.classList.add('show');
+        }
+
+        // ===== WINDOW RESIZE =====
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+
+        // ===== EXIT GAME =====
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && gameState.gameRunning) {
+                gameState.gameRunning = false;
+            }
+        });
+
+        // ===== INIT =====
+        loadGameState();
+        updateLobbyDisplay();
+        initWeaponUI();
+        updateLoadingProgress(50);
+    </script>
+</body>
+</html>
