@@ -781,14 +781,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon-es6/0.20.0/cannon-es6.js"></script>
     <script>
-        // ===== WEEKLY EVENTS SYSTEM =====
+        // ===== EVENT SYSTEM =====
         const EVENTS = {
             week1: {
                 name: '⚡ LIGHTNING STRIKE',
                 description: 'Double credits for all kills!',
                 multiplier: 2,
                 reward: '+200% Credit Bonus',
-                eventWeapon: null,
+                newWeapon: null,
                 color: '#00f2fe'
             },
             week2: {
@@ -796,26 +796,23 @@
                 description: 'Inferno Blaster costs 50% less!',
                 multiplier: 1.5,
                 reward: 'Weapon Discount!',
-                eventWeapon: 'inferno',
-                discountedWeapon: 'inferno',
-                discountPercent: 50,
+                newWeapon: 'inferno',
                 color: '#ff4444'
             },
             week3: {
                 name: '🌙 MIDNIGHT MADNESS',
                 description: 'Dark Throne arena gives 3x rewards!',
-                multiplier: 1.8,
+                multiplier: 3,
                 reward: '+300% Bonus on Dark Throne',
-                mapBonus: { map: 'darkness', multiplier: 3 },
+                newWeapon: null,
                 color: '#ff00ff'
             },
             week4: {
                 name: '💎 CRYSTAL RUSH',
-                description: 'New weapon: Phase Disruptor FREE!',
+                description: 'New weapon: Phase Disruptor unlocked FREE!',
                 multiplier: 1.8,
-                reward: 'Free Phase Disruptor!',
-                eventWeapon: 'phase',
-                freeWeapon: 'phase',
+                reward: 'Free Weapon!',
+                newWeapon: 'phase',
                 color: '#00ffff'
             }
         };
@@ -827,7 +824,7 @@
             week4: { name: 'Survive 5 Matches', target: 5, reward: 600 }
         };
 
-        // ===== STORAGE =====
+        // ===== PERSISTENT STORAGE =====
         const STORAGE_KEY = 'rivalArenaGameState';
 
         function saveGameState() {
@@ -836,8 +833,9 @@
                 totalKills: gameState.totalKills,
                 matchesWon: gameState.matchesWon,
                 unlockedWeapons: gameState.unlockedWeapons,
+                lastWeekPlayed: gameState.lastWeekPlayed,
                 weeklyProgress: gameState.weeklyProgress,
-                lastWeek: gameState.lastWeek
+                claimedRewards: gameState.claimedRewards
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
@@ -850,8 +848,9 @@
                 gameState.totalKills = state.totalKills || 0;
                 gameState.matchesWon = state.matchesWon || 0;
                 gameState.unlockedWeapons = state.unlockedWeapons || [0];
+                gameState.lastWeekPlayed = state.lastWeekPlayed || 1;
                 gameState.weeklyProgress = state.weeklyProgress || 0;
-                gameState.lastWeek = state.lastWeek || 1;
+                gameState.claimedRewards = state.claimedRewards || [];
             }
         }
 
@@ -875,42 +874,90 @@
         function getEventTimeRemaining() {
             const now = new Date();
             const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
-            return `${daysUntilMonday} days remaining`;
+            const hours = 23 - now.getHours();
+            const minutes = 59 - now.getMinutes();
+            
+            if (daysUntilMonday === 7) {
+                return `${hours}h ${minutes}m remaining`;
+            } else if (daysUntilMonday === 1) {
+                return `${hours}h ${minutes}m remaining`;
+            } else {
+                return `${daysUntilMonday} days remaining`;
+            }
         }
 
-        // ===== CONFIG =====
+        // ===== GAME CONFIGURATION =====
         const CONFIG = {
             maps: {
-                neon: { name: 'NEON GRID', groundColor: 0x0a0a24, skyColor: 0x000814, enemyColor: 0xff3333, gridColor: 0x00f2fe },
-                volcano: { name: 'VOLCANO ARENA', groundColor: 0x1a0a00, skyColor: 0x3d0000, enemyColor: 0xffaa00, gridColor: 0xff6600 },
-                darkness: { name: 'DARK THRONE', groundColor: 0x000000, skyColor: 0x0a0a0f, enemyColor: 0xff00ff, gridColor: 0xff00ff },
-                sky: { name: 'SKY FORTRESS', groundColor: 0x87ceeb, skyColor: 0x87ceeb, enemyColor: 0x0066ff, gridColor: 0x0099ff },
-                crystal: { name: 'CRYSTAL CAVE', groundColor: 0x1a1a3a, skyColor: 0x0f0f1f, enemyColor: 0x00ffff, gridColor: 0x00ffff }
+                neon: {
+                    name: 'NEON GRID',
+                    groundColor: 0x0a0a24,
+                    skyColor: 0x000814,
+                    enemyColor: 0xff3333,
+                    gridColor: 0x00f2fe,
+                    description: 'Cyan cyberpunk space'
+                },
+                volcano: {
+                    name: 'VOLCANO ARENA',
+                    groundColor: 0x1a0a00,
+                    skyColor: 0x3d0000,
+                    enemyColor: 0xffaa00,
+                    gridColor: 0xff6600,
+                    description: 'Molten volcanic landscape'
+                },
+                darkness: {
+                    name: 'DARK THRONE',
+                    groundColor: 0x000000,
+                    skyColor: 0x0a0a0f,
+                    enemyColor: 0xff00ff,
+                    gridColor: 0xff00ff,
+                    description: 'Pitch black void'
+                },
+                sky: {
+                    name: 'SKY FORTRESS',
+                    groundColor: 0x87ceeb,
+                    skyColor: 0x87ceeb,
+                    enemyColor: 0x0066ff,
+                    gridColor: 0x0099ff,
+                    description: 'Floating in clouds'
+                },
+                crystal: {
+                    name: 'CRYSTAL CAVE',
+                    groundColor: 0x1a1a3a,
+                    skyColor: 0x0f0f1f,
+                    enemyColor: 0x00ffff,
+                    gridColor: 0x00ffff,
+                    description: 'Luminescent crystal chamber'
+                }
             },
             weapons: [
-                { id: 'pistol', name: 'LASER PISTOL', damage: 1, fireRate: 100, projectileSpeed: 100, projectileSize: 0.15, color: 0x00f2fe, cost: 0 },
-                { id: 'rifle', name: 'PLASMA RIFLE', damage: 2, fireRate: 60, projectileSpeed: 120, projectileSize: 0.12, color: 0xff007f, cost: 500 },
-                { id: 'shotgun', name: 'SCATTER CANNON', damage: 5, fireRate: 400, projectileSpeed: 80, projectileSize: 0.25, color: 0xffaa00, cost: 1000, pellets: 8 },
-                { id: 'cannon', name: 'HYPER CANNON', damage: 10, fireRate: 800, projectileSpeed: 60, projectileSize: 0.4, color: 0xff0000, cost: 2000 },
-                { id: 'beam', name: 'ENERGY BEAM', damage: 3, fireRate: 50, projectileSpeed: 150, projectileSize: 0.08, color: 0x00ff00, cost: 3000 },
-                { id: 'missile', name: 'HOMING MISSILE', damage: 8, fireRate: 500, projectileSpeed: 70, projectileSize: 0.3, color: 0xffff00, cost: 5000, homing: true },
-                { id: 'arc', name: 'ARC THROWER', damage: 4, fireRate: 150, projectileSpeed: 90, projectileSize: 0.2, color: 0x0099ff, cost: 1500 },
-                { id: 'pulse', name: 'PULSE BLASTER', damage: 2, fireRate: 80, projectileSpeed: 110, projectileSize: 0.18, color: 0xff6600, cost: 800 },
-                { id: 'phase', name: 'PHASE DISRUPTOR', damage: 6, fireRate: 200, projectileSpeed: 100, projectileSize: 0.22, color: 0xff00ff, cost: 2500 },
-                { id: 'frost', name: 'FROST CANNON', damage: 3, fireRate: 120, projectileSpeed: 95, projectileSize: 0.19, color: 0x00ffff, cost: 1200 },
-                { id: 'inferno', name: 'INFERNO BLASTER', damage: 7, fireRate: 250, projectileSpeed: 105, projectileSize: 0.26, color: 0xff4444, cost: 3500 },
-                { id: 'nova', name: 'NOVA EXPLOSIVE', damage: 12, fireRate: 1200, projectileSpeed: 50, projectileSize: 0.35, color: 0xffff00, cost: 7000, explosion: true }
+                { id: 'pistol', name: 'LASER PISTOL', damage: 1, fireRate: 100, projectileSpeed: 100, projectileSize: 0.15, color: 0x00f2fe, cost: 0, ammo: Infinity },
+                { id: 'rifle', name: 'PLASMA RIFLE', damage: 2, fireRate: 60, projectileSpeed: 120, projectileSize: 0.12, color: 0xff007f, cost: 500, ammo: Infinity },
+                { id: 'shotgun', name: 'SCATTER CANNON', damage: 5, fireRate: 400, projectileSpeed: 80, projectileSize: 0.25, color: 0xffaa00, cost: 1000, ammo: Infinity, pellets: 8 },
+                { id: 'cannon', name: 'HYPER CANNON', damage: 10, fireRate: 800, projectileSpeed: 60, projectileSize: 0.4, color: 0xff0000, cost: 2000, ammo: Infinity },
+                { id: 'beam', name: 'ENERGY BEAM', damage: 3, fireRate: 50, projectileSpeed: 150, projectileSize: 0.08, color: 0x00ff00, cost: 3000, ammo: Infinity },
+                { id: 'missile', name: 'HOMING MISSILE', damage: 8, fireRate: 500, projectileSpeed: 70, projectileSize: 0.3, color: 0xffff00, cost: 5000, ammo: Infinity, homing: true },
+                { id: 'arc', name: 'ARC THROWER', damage: 4, fireRate: 150, projectileSpeed: 90, projectileSize: 0.2, color: 0x0099ff, cost: 1500, ammo: Infinity },
+                { id: 'pulse', name: 'PULSE BLASTER', damage: 2, fireRate: 80, projectileSpeed: 110, projectileSize: 0.18, color: 0xff6600, cost: 800, ammo: Infinity },
+                { id: 'phase', name: 'PHASE DISRUPTOR', damage: 6, fireRate: 200, projectileSpeed: 100, projectileSize: 0.22, color: 0xff00ff, cost: 2500, ammo: Infinity },
+                { id: 'frost', name: 'FROST CANNON', damage: 3, fireRate: 120, projectileSpeed: 95, projectileSize: 0.19, color: 0x00ffff, cost: 1200, ammo: Infinity },
+                { id: 'inferno', name: 'INFERNO BLASTER', damage: 7, fireRate: 250, projectileSpeed: 105, projectileSize: 0.26, color: 0xff4444, cost: 3500, ammo: Infinity },
+                { id: 'nova', name: 'NOVA EXPLOSIVE', damage: 12, fireRate: 1200, projectileSpeed: 50, projectileSize: 0.35, color: 0xffff00, cost: 7000, ammo: Infinity, explosion: true }
             ]
         };
 
         // ===== GAME STATE =====
         const gameState = {
+            // Persistent
             totalCredits: 0,
             totalKills: 0,
             matchesWon: 0,
             unlockedWeapons: [0],
+            lastWeekPlayed: 1,
             weeklyProgress: 0,
-            lastWeek: 1,
+            claimedRewards: [],
+
+            // Session
             currentMap: 'neon',
             currentWeapon: 0,
             score: 0,
@@ -920,7 +967,7 @@
             playerAlive: true
         };
 
-        // ===== THREE.JS =====
+        // ===== THREE.JS SETUP =====
         let scene, camera, renderer, world;
         let player, enemies = [], bullets = [];
         let keys = {};
@@ -934,7 +981,7 @@
         const hud = document.getElementById('hud');
         const deathScreen = document.getElementById('death-screen');
 
-        // ===== UPDATE LOBBY =====
+        // ===== UPDATE LOBBY DISPLAY =====
         function updateLobbyDisplay() {
             const currentWeek = getCurrentWeek();
             const currentEvent = getCurrentEvent();
@@ -948,6 +995,7 @@
             document.getElementById('challenge-progress').textContent = gameState.weeklyProgress + ' / ' + currentChallenge.target;
             document.getElementById('challenge-label').textContent = currentChallenge.name;
 
+            // Update event banner
             const eventBanner = document.getElementById('event-banner');
             document.getElementById('event-title').textContent = currentEvent.name;
             document.getElementById('event-description').textContent = currentEvent.description;
@@ -956,7 +1004,7 @@
             eventBanner.style.display = 'block';
         }
 
-        // ===== WEAPON UI =====
+        // ===== WEAPON LIST UI =====
         function initWeaponUI() {
             const currentEvent = getCurrentEvent();
             const weaponList = document.getElementById('weapon-list');
@@ -964,7 +1012,7 @@
 
             CONFIG.weapons.forEach((weapon, index) => {
                 const isUnlocked = gameState.unlockedWeapons.includes(index);
-                const isFree = currentEvent.freeWeapon === weapon.id;
+                const isFree = currentEvent.newWeapon === weapon.id;
                 const div = document.createElement('div');
                 div.className = 'weapon-item';
                 
@@ -973,8 +1021,8 @@
                 if (isFree) div.classList.add('event-weapon');
 
                 let cost = weapon.cost;
-                if (currentEvent.discountedWeapon === weapon.id) {
-                    cost = Math.floor(cost * (1 - currentEvent.discountPercent / 100));
+                if (weapon.id === 'inferno' && currentEvent.name.includes('INFERNO')) {
+                    cost = Math.floor(cost * 0.5);
                 }
 
                 const costDisplay = isUnlocked ? 'OWNED' : 
@@ -1473,18 +1521,17 @@
             gameState.gameRunning = false;
 
             const currentEvent = getCurrentEvent();
-            const currentChallenge = getCurrentChallenge();
             
             let baseCoins = gameState.score * 100 + (gameState.wave - 1) * 500;
             let bonusCoins = 0;
             let mapBonus = 0;
 
-            // Map specific bonus
-            if (currentEvent.mapBonus && gameState.currentMap === currentEvent.mapBonus.map) {
-                mapBonus = Math.floor(baseCoins * (currentEvent.mapBonus.multiplier - 1));
+            // Check for map-specific event bonus
+            if (gameState.currentMap === 'darkness' && currentEvent.name.includes('MIDNIGHT')) {
+                mapBonus = baseCoins * 3;
             }
 
-            // Event multiplier
+            // Apply event multiplier
             bonusCoins = Math.floor(baseCoins * (currentEvent.multiplier - 1));
             
             const totalCoins = baseCoins + bonusCoins + mapBonus;
@@ -1512,6 +1559,12 @@
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && gameState.gameRunning) {
+                gameState.gameRunning = false;
             }
         });
 
